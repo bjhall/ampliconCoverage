@@ -85,7 +85,7 @@ foreach my $id (sort keys %sample_data) {
     # Map reads to reference sequences, and create BAM output
     if ($USE_BWA) {
 	system( $BWA_BIN." mem -t 4 $ref $in_fq > $out_sam 2> bwa.log");
-	system( $SAMTOOLS_BIN." view -Sb $out_sam  > $out_bam");
+	system( $SAMTOOLS_BIN." view -Sb $out_sam  > $out_bam 2> /dev/null");
     }
     else {
 	system( "clc_mapper_beta -d $ref -q $in_fq -g 1 -e 1 -G 2 -E 2 -s 0.6 --cpus 4 -o $out_cas > /dev/null");
@@ -284,101 +284,6 @@ sub get_coverage_by_position {
 }
 
 
-sub get_sample_name_from_bam {
-    my $bam = shift;
-
-    my( $id, $sm );
-    open( BAMHEADER, $SAMTOOLS_BIN." view -H $bam|" );
-    while (<BAMHEADER>) {
-	chomp;
-	if (/^\@RG/) {
-	    my @RG = split /\t/;
-	    foreach (@RG) {
-		my( $key, $val ) = split /:/;
-		if ($key eq "SM") {
-		    $sm = $val 
-		}
-		if ($key eq "ID") {
-		    $id = $val;
-		}
-	    }
-	}
-    }
-    return( $id, $sm );
-}
-
-
-
-sub create_coverage_plots {
-    my( $cov, $len, $samp ) = @_;
-
-    mkdir "images";
-
-    my %plot_files;
-    my $PLOT_HEIGHT = 75;
-    my $OFS = 20;
-    my $IMG_HEIGHT = $PLOT_HEIGHT + $OFS * 2;
-
-    foreach my $samp_id ( sort keys %$samp ) {
-	foreach my $seq_id ( sort keys %$len ) {
-	    my $seq_len = $len->{$seq_id};
-	    my ($short_seq_id) = ($seq_id =~ /^(.*?):/);
-	    my $max_cov = max( values %{$cov->{$samp_id}->{$seq_id}}, 20 );
-	    my $IMG_WIDTH = $seq_len + $OFS * 2;
-
-	    my $im = new GD::Image( $IMG_WIDTH, $IMG_HEIGHT, 1 );
-	    my $white        = $im->colorAllocate(255,255,255);
-	    my $gray         = $im->colorAllocate(100,100,110);
-	    my $plot_bg_col  = $im->colorAllocate(235,235,235);
-	    my $black        = $im->colorAllocate(0,0,0);       
-	    my $curve_col    = $im->colorAllocate(255,0,0);
-	    $im->filledRectangle( 0, 0, $IMG_WIDTH, $IMG_HEIGHT, $white );
-	    $im->filledRectangle( $OFS, $OFS, $IMG_WIDTH - $OFS, $IMG_HEIGHT - $OFS, $plot_bg_col );
-	    $im->setAntiAliased( $curve_col );
-
-	    my $prev_y;	    
-	    foreach my $pos (1..$seq_len) {
-		my $pos_cov = ( $cov->{$samp_id}->{$seq_id}->{$pos} or 0 );
-
-		my $y = ($PLOT_HEIGHT+$OFS) - ($pos_cov/$max_cov)*$PLOT_HEIGHT;
-		my $x = ($pos-1) + $OFS;
-
-		unless ($prev_y) { $prev_y = $y; } # First round
-
-		$im->line( $x, $prev_y, $x+1, $y, gdAntiAliased );
-		$prev_y = $y;;
-	    }
-
-	    $im->line( $OFS, $OFS, $OFS, $IMG_HEIGHT - $OFS, $black );
-	    $im->line( $OFS, $IMG_HEIGHT - $OFS, $IMG_WIDTH - $OFS, $IMG_HEIGHT - $OFS, $black );
-
-	    # Draw X ticks and labels
-	    my $x_tick_step = 1;
-	    $x_tick_step *= 10 until ( $seq_len / $x_tick_step < 10 );
-	    for my $x_tick ( 0..int($seq_len / $x_tick_step) ) {
-		my $x = $x_tick * $x_tick_step;
-		$im->line( $OFS + $x, $IMG_HEIGHT - $OFS, $OFS + $x, $IMG_HEIGHT - $OFS + 3, $black );
-		$im->string( gdTinyFont, $OFS + $x - (length($x)*3) + 1, $IMG_HEIGHT - $OFS + 5, $x, $black );
-	    }
-
-	    # Show max value of Y axis
-	    $im->string( gdTinyFont, $OFS - length($max_cov) * 6, $OFS - 2, $max_cov, $black );
-
-	    # Print amplicon sequence name
-	    $im->string( gdTinyFont, $OFS, $OFS - 10, $seq_id, $gray );
-
-	    # Output png
-	    my $out_png = "images/".$samp_id.".".$short_seq_id.".png";
-	    open( PNG, ">".$out_png );
-	    print PNG $im->png;
-	    close PNG;
-	    
-	    $plot_names{$samp_id}->{$seq_id} = $out_png;
-	}
-    }
-    return %plot_names;
-}
-
 sub get_options {
     my %opt;
     GetOptions( \%opt, 'install-dir=s', 'output-dir=s', 'output-url=s', 'report-dir=s' );
@@ -484,6 +389,7 @@ sub create_coverage_plots_scale {
     }
     return %plot_names;
 }
+
 
 sub avg {
     my $sum;
