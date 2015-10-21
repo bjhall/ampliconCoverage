@@ -2,6 +2,7 @@
 use strict;
 use List::Util qw(max min);
 use File::Basename;
+use File::Copy;
 use Data::Dumper;
 use Getopt::Long;
 use JSON;
@@ -52,8 +53,19 @@ foreach my $id (keys %$samples) {
     
     $ref_files{ $ref_path } = 1;
 
+    # If BWA, copy reference fasta to output dir and build index, unless index has already
+    # been built manuallt. (Necessary due to lack of writing permissions in ref-path)
     if ($USE_BWA and !-s "$ref_path.bwt") {
-	system( $BWA_BIN." index $ref_path" );
+	my $ref_copy = $opt{'output-dir'} . "/" . basename( $ref_path );
+
+	# Only build each reference once
+	unless ( -s "$ref_copy.bwt" ) {
+	    copy( $ref_path, $ref_copy );
+	    system( $BWA_BIN." index ".$ref_copy );
+	}
+
+	# Change reference path for this sample
+	$sample_data{$id} -> {ref} = $ref_copy;
     }
 }
 
