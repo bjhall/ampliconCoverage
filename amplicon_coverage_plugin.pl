@@ -184,39 +184,13 @@ print HTML_BLOCK '<html><head></head><body>
 ';
 
 
-
-# Create read count HTML table
-print HTML_BLOCK "<b>Number of mapped reads per amplicon:</b><br>";
+# Create average coverage HTML table
+print HTML_BLOCK "<b>Average coverage (x) per amplicon:</b><br>";
 print HTML_BLOCK "<table><tr class='header'><td>amplicon</td>";
 print HTML_BLOCK "<td>".$_."</td>" foreach ( sort keys %sample_data );
 print HTML_BLOCK "</tr>";
 
 my $row = 0;
-foreach my $seqid ( sort keys %len ) {
-    $row++;
-
-    my $show_id = $seqid;
-    if( length $seqid > 30 ) {
-        $show_id = substr( $seqid, 0, 30 ) . "...";
-    }
-
-    $seqid =~ /^(.*?):/;
-    print HTML_BLOCK "<tr class='".($row%2==0?"even":"odd")."'><td><span title='$seqid'>$show_id</span></td>";
-    foreach my $sample_id ( sort keys %sample_data ) {
-	printf HTML_BLOCK "<td class='alnright'>%d</td>", ( $mapped_reads_per_amplicon{$sample_id}->{$seqid} or 0 );
-    }
-    print HTML_BLOCK "</tr>";
-}
-print HTML_BLOCK "</table>";
-
-
-# Create average coverage HTML table
-print HTML_BLOCK "<p><b>Average coverage (x) per amplicon:</b><br>";
-print HTML_BLOCK "<table><tr class='header'><td>amplicon</td>";
-print HTML_BLOCK "<td>".$_."</td>" foreach ( sort keys %sample_data );
-print HTML_BLOCK "</tr>";
-
-$row = 0;
 foreach my $seqid ( sort keys %len ) {
     $row++;
 
@@ -234,7 +208,34 @@ foreach my $seqid ( sort keys %len ) {
     print HTML_BLOCK "</tr>";
 }
 print HTML_BLOCK "</table>";
+
+# Create read count HTML table
+print HTML_BLOCK "<p><b>Number of mapped reads per amplicon:</b><br>";
+print HTML_BLOCK "<table><tr class='header'><td>amplicon</td>";
+print HTML_BLOCK "<td>".$_."</td>" foreach ( sort keys %sample_data );
+print HTML_BLOCK "</tr>";
+
+$row = 0;
+foreach my $seqid ( sort keys %len ) {
+    $row++;
+
+    my $show_id = $seqid;
+    if( length $seqid > 30 ) {
+        $show_id = substr( $seqid, 0, 30 ) . "...";
+    }
+
+    $seqid =~ /^(.*?):/;
+    print HTML_BLOCK "<tr class='".($row%2==0?"even":"odd")."'><td><span title='$seqid'>$show_id</span></td>";
+    foreach my $sample_id ( sort keys %sample_data ) {
+	printf HTML_BLOCK "<td class='alnright'>%d</td>", ( $mapped_reads_per_amplicon{$sample_id}->{$seqid} or 0 );
+    }
+    print HTML_BLOCK "</tr>";
+}
+print HTML_BLOCK "</table>";
+
 close HTML_BLOCK;
+
+
 
 
 
