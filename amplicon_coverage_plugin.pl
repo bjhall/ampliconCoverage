@@ -128,8 +128,12 @@ print "\t".$_ foreach ( sort keys %sample_data );
 print "\n";
 my %avg_cov_per_amplicon;
 foreach my $seq_id ( sort keys %len ) {
-    $seq_id =~ /^(.*?):/;
-    print $1;
+    if( length $seq_id > 30 ) {
+	print substr( $seq_id, 0, 30 ) . "...";
+    }
+    else {
+	print $seq_id;
+    }
     
     foreach my $sample_id ( sort keys %sample_data ) {
 	my $sum = 0;
@@ -164,12 +168,14 @@ open( HTML_BLOCK, ">ampliconCoverage_block.html" );
 
 print HTML_BLOCK '<html><head></head><body>
 <style>
-    *{font-family:Arial; font-size:9pt}
+    *{font-family:Arial; font-size:8pt}
     .alnright { text-align: right; }
+    .fail { background-color: #FF6666; }
+    .low { background-color: #FFFF66; }
     .header{ background-color: #BBBBCC; font-weight:bold; }
     .odd   { background-color: #FFFFFF; }
     .even  { background-color: #DDDDDD; }
-    td { padding:6px; }
+    td { padding:4px; }
     table {
       border-collapse: collapse;
     }
@@ -189,8 +195,13 @@ my $row = 0;
 foreach my $seqid ( sort keys %len ) {
     $row++;
 
+    my $show_id = $seqid;
+    if( length $seqid > 30 ) {
+        $show_id = substr( $seqid, 0, 30 ) . "...";
+    }
+
     $seqid =~ /^(.*?):/;
-    print HTML_BLOCK "<tr class='".($row%2==0?"even":"odd")."'><td>$1</td>";
+    print HTML_BLOCK "<tr class='".($row%2==0?"even":"odd")."'><td><span title='$seqid'>$show_id</span></td>";
     foreach my $sample_id ( sort keys %sample_data ) {
 	printf HTML_BLOCK "<td class='alnright'>%d</td>", ( $mapped_reads_per_amplicon{$sample_id}->{$seqid} or 0 );
     }
@@ -209,10 +220,16 @@ $row = 0;
 foreach my $seqid ( sort keys %len ) {
     $row++;
 
-    $seqid =~ /^(.*?):/;
-    print HTML_BLOCK "<tr class='".($row%2==0?"even":"odd")."'><td>$1</td>";
+    my $show_id = $seqid;
+    if( length $seqid > 30 ) {
+        $show_id = substr( $seqid, 0, 30 ) . "...";
+    }
+
+
+    print HTML_BLOCK "<tr class='".($row%2==0?"even":"odd")."'><td><span title='$seqid'>$show_id</span></td>";
     foreach my $sample_id ( sort keys %sample_data ) {
-	printf HTML_BLOCK "<td class='alnright'>%.2f</td>", ( $avg_cov_per_amplicon{$sample_id}->{$seqid} or 0 );
+	my $cov = ( $avg_cov_per_amplicon{$sample_id}->{$seqid} or 0 );
+	printf HTML_BLOCK "<td class='alnright %s'>%.2f</td>", ( $cov==0 ? "fail" : ($cov<10 ? "low" : "") ), $cov;
     }
     print HTML_BLOCK "</tr>";
 }

@@ -1,5 +1,5 @@
 #!/bin/bash
-VERSION="0.0.3"
+VERSION="0.0.4"
 
 echo 'running launch.sh'
 ${DIRNAME}/amplicon_coverage_plugin.pl \
