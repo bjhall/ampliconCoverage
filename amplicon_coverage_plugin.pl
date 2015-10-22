@@ -72,7 +72,7 @@ foreach my $id (keys %$samples) {
 
 # Get amplicon sequence lengths
 my %len = get_lengths( keys %ref_files );
-
+print Dumper(\%len);
 
 # Process raw sequence data 
 my( %mapped_reads_per_amplicon, %coverage_by_position );
@@ -351,7 +351,6 @@ sub create_coverage_plots_scale {
 	    my $seq_len = $len->{$seq_id};
 	    my $plot_width = min( $seq_len, $MAX_PLOT_WIDTH ); 
 	    my $x_scale = $plot_width / $seq_len;
-	    my ($short_seq_id) = ($seq_id =~ /^(.*?):/);
 	    my $max_cov = max( values %{$cov->{$samp_id}->{$seq_id}}, 20 );
 	    my $IMG_WIDTH = $plot_width + $OFS * 2;
 
@@ -409,7 +408,7 @@ sub create_coverage_plots_scale {
 	    $im->string( gdTinyFont, $OFS, $OFS - 10, $seq_id, $gray );
 
 	    # Output png
-	    my $out_png = "images/".$samp_id.".".$short_seq_id.".png";
+	    my $out_png = "images/".$samp_id.".".$seq_id.".png";
 	    open( PNG, ">".$out_png );
 	    print PNG $im->png;
 	    close PNG;
