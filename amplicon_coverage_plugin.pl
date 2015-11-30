@@ -13,7 +13,7 @@ my $BAM2FQ_BIN   = "bamToFastq";
 my $SAMTOOLS_BIN = "samtools";
 my $BWA_BIN      = "bwa";
 my $USE_BWA      = 1;
-
+my $N_THREADS    = 4;
 
 # Parse command line options
 my %opt = get_options( );
@@ -30,7 +30,7 @@ my( %ref_files, %sample_data );
 foreach my $id (keys %$samples) {
 
     # FIXME!!! Select samples/references somehow
-    next unless $samples->{$id}->{sample} =~ /(amplicon|amplikon)/;
+#    next unless $samples->{$id}->{sample} =~ /(amplicon|amplikon)/;
 
     my $ref = $samples->{$id}->{reference};
     my $ref_path = '/results/referenceLibrary/tmap-f3/' . $ref . '/' . $ref . '.fasta';
@@ -72,7 +72,6 @@ foreach my $id (keys %$samples) {
 
 # Get amplicon sequence lengths
 my %len = get_lengths( keys %ref_files );
-print Dumper(\%len);
 
 # Process raw sequence data 
 my( %mapped_reads_per_amplicon, %coverage_by_position );
@@ -96,7 +95,7 @@ foreach my $id (sort keys %sample_data) {
 
     # Map reads to reference sequences, and create BAM output
     if ($USE_BWA) {
-	system( $BWA_BIN." mem -t 4 $ref $in_fq > $out_sam 2> bwa.log");
+	system( $BWA_BIN." mem -t $N_THREADS $ref $in_fq > $out_sam 2> bwa.log");
 	system( $SAMTOOLS_BIN." view -Sb $out_sam  > $out_bam 2> /dev/null");
     }
     else {
@@ -118,13 +117,14 @@ foreach my $id (sort keys %sample_data) {
     unlink( $out_bam );
     unlink( $in_fq );
     print " done.\n";
+
 }    
 
 
 print "Creating output.\n";
 # Output average coverage table
 print "seq";
-print "\t".$_ foreach ( sort keys %sample_data );
+print "\t".$sample_data{$_}->{name} foreach ( sort keys %sample_data );
 print "\n";
 my %avg_cov_per_amplicon;
 foreach my $seq_id ( sort keys %len ) {
@@ -187,7 +187,7 @@ print HTML_BLOCK '<html><head></head><body>
 # Create average coverage HTML table
 print HTML_BLOCK "<b>Average coverage (x) per amplicon:</b><br>";
 print HTML_BLOCK "<table><tr class='header'><td>amplicon</td>";
-print HTML_BLOCK "<td>".$_."</td>" foreach ( sort keys %sample_data );
+print HTML_BLOCK "<td>".$sample_data{$_}->{name}."</td>" foreach ( sort keys %sample_data );
 print HTML_BLOCK "</tr>";
 
 my $row = 0;
@@ -212,7 +212,7 @@ print HTML_BLOCK "</table>";
 # Create read count HTML table
 print HTML_BLOCK "<p><b>Number of mapped reads per amplicon:</b><br>";
 print HTML_BLOCK "<table><tr class='header'><td>amplicon</td>";
-print HTML_BLOCK "<td>".$_."</td>" foreach ( sort keys %sample_data );
+print HTML_BLOCK "<td>".$sample_data{$_}->{name}."</td>" foreach ( sort keys %sample_data );
 print HTML_BLOCK "</tr>";
 
 $row = 0;
@@ -262,21 +262,30 @@ close HTML;
 sub get_lengths {
     my @files = @_;
 
-    my %lens;
+    my %seq;
+    my $id;
     foreach my $fn (@files) {
 
 	open( FA, $fn );
 	while (<FA>) {
+	    chomp;
+
 	    if (/^>(.+)$/) {
-		chomp;
-		my $id = $1;
-		chomp (my $seq = <FA>);
-		my $len = length($seq);
-		$lens{$id} = $len;
+		$id = $1;
+		$id =~ s/\s*$//; # Remove trailing spaces, since samtools does that...
+	    }
+	    else {
+		$seq{$id} .= $_;
 	    }
 	}
 	close FA;
     }
+
+    my %lens;
+    foreach (keys %seq) {
+	$lens{$_} = length( $seq{$_} );
+    }
+
     return %lens;
 }
 
